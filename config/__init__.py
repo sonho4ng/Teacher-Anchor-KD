@@ -1,7 +1,3 @@
-"""
-Config package - Knowledge Distillation configurations
-"""
-
 from .base_config import BaseConfig
 from .cdm_config import CDMConfig
 from .dskd_config import DSKDConfig

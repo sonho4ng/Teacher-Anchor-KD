@@ -7,7 +7,7 @@ from src.pooling import last_token_pool, mean_pooling
 
 class StellaModel(nn.Module):
     
-    def __init__(self, model_name: str, output_dim1: int = 2560, 
+    def __init__(self, model_name: str, output_dim1: int = 1024, 
                  pooling: str = 'cls', output_dim2: int = 512, 
                  output_dim3: int = 256, output_dim4: int = 128):
         super().__init__()

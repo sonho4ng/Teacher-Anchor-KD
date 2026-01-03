@@ -6,9 +6,8 @@ from typing import List, Dict, Any
 import pandas as pd
 import numpy as np
 class DualTokenizerCollateWithTeacher:
-    def __init__(self, tok_student, tok_teacher, task: str, max_len: int):
+    def __init__(self, tok_student, task: str, max_len: int):
         self.ts = tok_student
-        self.tt = tok_teacher
         self.task = task
         self.max_len = max_len
 

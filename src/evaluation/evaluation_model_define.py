@@ -207,14 +207,6 @@ def eval_classification_task(model, path_list):
         
     model.train()
 
-from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-from tqdm import tqdm
-import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, average_precision_score
-
-
-tokenizer = AutoTokenizer.from_pretrained('google-bert/bert-base-uncased')
 
 class PairDataset(Dataset):
     def __init__(self, file_path):
@@ -330,8 +322,4 @@ test_sts_tasks = ['data/multi-data/sick_test.csv',
 test_pair_tasks = ['data/multi-data/mrpc_test.csv', 
                    'data/multi-data/scitail_test.csv', 
                    'data/multi-data/wic_test.csv']
-
-test_pair_tasks = ['/kaggle/input/multitask-data/multi-data/mrpc_test.csv', 
-                   '/kaggle/input/multitask-data/multi-data/scitail_test.csv', 
-                   '/kaggle/input/multitask-data/multi-data/wic_test.csv']
 

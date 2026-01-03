@@ -87,7 +87,6 @@ class DualSpaceKD(nn.Module):
         
         T1_to_S = self.proj_t2s(T_cls)  
         kd_t2s = F.mse_loss(L2(S_cls), L2(T1_to_S.detach()))
-        
         kd_cls = kd_s2t + kd_t2s
         
         # ===== Token-level bidirectional KD with CLA =====

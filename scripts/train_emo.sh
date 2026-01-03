@@ -1,5 +1,4 @@
 #!/bin/bash
-# Training script for EMO (Embedding Model Distillation) - Linux/Mac
 
 echo "======================================"
 echo "Training with EMO method"
@@ -9,7 +8,7 @@ export CUDA_VISIBLE_DEVICES=0,1
 export TOKENIZERS_PARALLELISM=false
 
 METHOD="emo"
-TRAIN_DATA="../data/merged_3_data_5k_each.csv"
+TRAIN_DATA="../data/test_debug.csv"
 STUDENT_MODEL="..\model_hub\MiniLMv2-L6-H384-distilled-from-BERT-Base\MiniLM-L6-H384-distilled-from-BERT-Base"
 TEACHER_MODEL="Qwen/Qwen3-Embedding-0.6B"
 BATCH_SIZE=32
@@ -18,7 +17,7 @@ LR=2e-5
 MAX_LENGTH=256
 SAVE_DIR="checkpoints/emo"
 
-python ../main.py \
+python3 ../main.py \
     --method $METHOD \
     --train_data $TRAIN_DATA \
     --student_model $STUDENT_MODEL \

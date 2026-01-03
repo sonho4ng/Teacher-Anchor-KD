@@ -1,17 +1,12 @@
-# Training script for Contextual Dynamic Mapping (CDM) - Windows PowerShell
-# This script trains a student model using CDM distillation method
-
 Write-Host "======================================"
 Write-Host "Training with CDM method"
 Write-Host "======================================"
 
-# Set environment variables
-$env:CUDA_VISIBLE_DEVICES = "0,1"  # Use 2 GPUs if available
+$env:CUDA_VISIBLE_DEVICES = "0,1"
 $env:TOKENIZERS_PARALLELISM = "false"
 
-# Training parameters
 $METHOD = "cdm"
-$TRAIN_DATA = "..\data\merged_3_data_5k_each.csv"
+$TRAIN_DATA = "..\data\test_debug.csv"
 $STUDENT_MODEL = "..\model_hub\MiniLMv2-L6-H384-distilled-from-BERT-Base\MiniLM-L6-H384-distilled-from-BERT-Base"
 $TEACHER_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 $BATCH_SIZE = 32
@@ -20,7 +15,6 @@ $LR = 2e-5
 $MAX_LENGTH = 256
 $SAVE_DIR = "checkpoints/cdm"
 
-# Run training
 python ../main.py `
     --method $METHOD `
     --train_data $TRAIN_DATA `

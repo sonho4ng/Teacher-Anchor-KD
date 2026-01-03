@@ -1,5 +1,3 @@
-# Training script for Stella (2-Stage Matryoshka Distillation) - Windows PowerShell
-
 Write-Host "======================================"
 Write-Host "Training with Stella method"
 Write-Host "======================================"
@@ -8,7 +6,7 @@ $env:CUDA_VISIBLE_DEVICES = "0,1"
 $env:TOKENIZERS_PARALLELISM = "false"
 
 $METHOD = "stella"
-$TRAIN_DATA = "..\data\merged_3_data_5k_each.csv"
+$TRAIN_DATA = "..\data\test_debug.csv"
 $STUDENT_MODEL="..\model_hub\MiniLMv2-L6-H384-distilled-from-BERT-Base\MiniLM-L6-H384-distilled-from-BERT-Base"
 $TEACHER_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 $BATCH_SIZE = 32

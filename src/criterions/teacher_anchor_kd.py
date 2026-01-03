@@ -34,7 +34,7 @@ class TeacherAnchorKD(nn.Module):
         # Projection heads will be initialized dynamically
         self.kd_proj_heads = None
     
-    def compute_structural_loss(
+    def compute_self_kd_loss(
         self,
         cls_base: List[torch.Tensor]
     ) -> torch.Tensor:
@@ -69,11 +69,7 @@ class TeacherAnchorKD(nn.Module):
             S_kd = self.kd_proj_heads[idx](cls_base[idx])  # [B, d_t]
             S_kd_n = F.normalize(S_kd, dim=-1, eps=self.eps_norm)
             
-            cos_sim = F.cosine_similarity(S_kd_n, T_kd_n, dim=-1).mean()
-            kd_cos_values.append(float(cos_sim.detach()))
-            
-            # Loss: 1 - cosine_similarity (minimize to maximize similarity)
-            kd_terms.append(1.0 - cos_sim)
+            kd_terms.append(1.0 - F.cosine_similarity(S_kd_n, T_kd_n, dim=-1).mean())
         
         if len(kd_terms) > 0:
             kd_loss = torch.stack(kd_terms).mean()
@@ -104,7 +100,7 @@ class TeacherAnchorKD(nn.Module):
                 nn.init.xavier_uniform_(proj.weight)
             self.kd_proj_heads.to(teacher_cls.device)
         
-        loss_struct = self.compute_structural_loss(cls_base)
+        loss_struct = self.compute_self_kd_loss(cls_base)
         
         loss_kd, kd_cos_values = self.compute_kd_loss(cls_base, teacher_cls)
         

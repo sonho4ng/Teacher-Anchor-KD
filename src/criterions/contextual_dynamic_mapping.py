@@ -376,22 +376,16 @@ class ContextualDynamicMapping:
                 )
                 
                 if A_t.size(0) > 0:
-                    # Project student to teacher space
                     S_proj_tok = proj_s2t(A_s).to(base_dtype)
                     A_t = A_t.to(base_dtype)
-                    
-                    # Normalize and compute MSE
                     S_proj_tok = F.normalize(S_proj_tok, p=2, dim=-1)
                     A_t = F.normalize(A_t, p=2, dim=-1)
-                    
                     kd_sum += F.mse_loss(S_proj_tok, A_t, reduction="sum")
                     denom += A_t.numel()
-                    
                     del S_proj_tok, A_t, A_s
         
         if denom == 0:
             return torch.tensor(0.0, device=device_s, dtype=base_dtype)
         else:
             loss = (kd_sum / denom).to(device=device_s, dtype=base_dtype)
-            # print(f"Done compute_cdm_loss: loss={loss.item():.4f}")
             return loss

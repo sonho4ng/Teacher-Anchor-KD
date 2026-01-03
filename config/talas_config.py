@@ -12,15 +12,14 @@ class TALASConfig(BaseConfig):
     student_special_token = "##"
     teacher_special_token = "G"
     
-    # TALAS parameters
-    last_layer_idx = 2  # Number of last layers to use for final KD (from bottom up)
-    start_rkd = 0  # Start index for structural loss computation
-    w_task = 0.1
+    last_layer_idx = 2
+    start_rkd = 0
+    w_task = 0.01
     w_kd = 0.75
     w_struct = 10.0
-    eps_norm = 1e-8
-    temperature = 0.07
-    rho = 0.05  # SAM optimizer rho parameter
+    eps_norm = 1e-12
+    temperature = 0.1
+    rho = 0.05
     
     batch_size = 32
     epochs = 5

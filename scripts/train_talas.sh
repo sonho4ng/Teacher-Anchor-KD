@@ -1,14 +1,29 @@
 #!/bin/bash
-# Bash script for TALAS training on Linux/Mac
 
-python ../main.py \
-  --method talas \
-  --train_data_path "data/AllNLI.csv" \
-  --student_model_name "bert-base-uncased" \
-  --teacher_model_name "Qwen/Qwen3-Embedding-0.6B" \
-  --save_dir "checkpoints/talas" \
-  --batch_size 128 \
-  --epochs 5 \
-  --learning_rate 2e-5 \
-  --max_length 256 \
-  --temperature 0.05
+echo "======================================"
+echo "Training with TALAS method"
+echo "======================================"
+
+export CUDA_VISIBLE_DEVICES="0,1"
+export TOKENIZERS_PARALLELISM="false"
+
+METHOD="talas"
+TRAIN_DATA="../data/test_debug.csv"
+STUDENT_MODEL="../model_hub/MiniLMv2-L6-H384-distilled-from-BERT-Base/MiniLM-L6-H384-distilled-from-BERT-Base"
+TEACHER_MODEL="Qwen/Qwen3-Embedding-0.6B"
+BATCH_SIZE=32
+EPOCHS=5
+LR=2e-5
+MAX_LENGTH=256
+SAVE_DIR="checkpoints/talas"
+
+python3 ../main.py \
+    --method $METHOD \
+    --train_data $TRAIN_DATA \
+    --student_model $STUDENT_MODEL \
+    --teacher_model $TEACHER_MODEL \
+    --batch_size $BATCH_SIZE \
+    --epochs $EPOCHS \
+    --lr $LR \
+    --max_length $MAX_LENGTH \
+    --save_dir $SAVE_DIR

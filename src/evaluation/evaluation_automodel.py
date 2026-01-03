@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import pandas as pd
@@ -8,12 +9,15 @@ from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, average_precision_score
 from sklearn.linear_model import LogisticRegression
 from transformers import AutoTokenizer
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 tokenizer = AutoTokenizer.from_pretrained('google-bert/bert-base-uncased')
 
 class STSDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)
@@ -134,7 +138,8 @@ def eval_cls(model, eval_loader):
 
 class ClasssifyDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)
@@ -207,18 +212,11 @@ def eval_classification_task(model, path_list):
         
     model.train()
 
-from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-from tqdm import tqdm
-import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, average_precision_score
-
-
-tokenizer = AutoTokenizer.from_pretrained('google-bert/bert-base-uncased')
 
 class PairDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)
@@ -330,8 +328,4 @@ test_sts_tasks = ['data/multi-data/sick_test.csv',
 test_pair_tasks = ['data/multi-data/mrpc_test.csv', 
                    'data/multi-data/scitail_test.csv', 
                    'data/multi-data/wic_test.csv']
-
-test_pair_tasks = ['/kaggle/input/multitask-data/multi-data/mrpc_test.csv', 
-                   '/kaggle/input/multitask-data/multi-data/scitail_test.csv', 
-                   '/kaggle/input/multitask-data/multi-data/wic_test.csv']
 

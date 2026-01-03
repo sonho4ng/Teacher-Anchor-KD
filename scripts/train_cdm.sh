@@ -1,19 +1,14 @@
 #!/bin/bash
 
-# Training script for Contextual Dynamic Mapping (CDM)
-# This script trains a student model using CDM distillation method
-
 echo "======================================"
 echo "Training with CDM method"
 echo "======================================"
 
-# Set environment variables
-export CUDA_VISIBLE_DEVICES=0,1  # Use 2 GPUs if available
+export CUDA_VISIBLE_DEVICES=0,1
 export TOKENIZERS_PARALLELISM=false
 
-# Training parameters
 METHOD="cdm"
-TRAIN_DATA="..\data\merged_3_data_5k_each.csv"
+TRAIN_DATA="..\data\test_debug.csv"
 STUDENT_MODEL="..\model_hub\MiniLMv2-L6-H384-distilled-from-BERT-Base\MiniLM-L6-H384-distilled-from-BERT-Base"
 TEACHER_MODEL="Qwen/Qwen3-Embedding-0.6B"
 BATCH_SIZE=32
@@ -22,7 +17,6 @@ LR=2e-5
 MAX_LENGTH=256
 SAVE_DIR="checkpoints/cdm"
 
-# Run training
 python3 ../main.py \
     --method $METHOD \
     --train_data $TRAIN_DATA \

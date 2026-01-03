@@ -1,7 +1,3 @@
-"""
-Main entry point for Knowledge Distillation Training
-"""
-
 import argparse
 import sys
 from config import CDMConfig, DSKDConfig, EMOConfig, StellaConfig, TALASConfig, BaseConfig
@@ -9,12 +5,10 @@ from distiller import KnowledgeDistiller
 
 
 def parse_args():
-    """Parse command line arguments."""
     parser = argparse.ArgumentParser(
         description="Knowledge Distillation for Embeddings Model"
     )
     
-    # Method selection
     parser.add_argument(
         '--method',
         type=str,
@@ -23,7 +17,6 @@ def parse_args():
         help='Distillation method to use'
     )
     
-    # Data paths
     parser.add_argument(
         '--train_data',
         type=str,
@@ -37,7 +30,6 @@ def parse_args():
         help='Path to evaluation data CSV file'
     )
     
-    # Model settings
     parser.add_argument(
         '--student_model',
         type=str,
@@ -51,7 +43,6 @@ def parse_args():
         help='Teacher model name or path'
     )
     
-    # Training hyperparameters
     parser.add_argument(
         '--batch_size',
         type=int,
@@ -77,7 +68,6 @@ def parse_args():
         help='Maximum sequence length'
     )
     
-    # Loss weights
     parser.add_argument(
         '--w_task',
         type=float,
@@ -91,7 +81,6 @@ def parse_args():
         help='DTW KD loss weight'
     )
     
-    # Paths
     parser.add_argument(
         '--save_dir',
         type=str,
@@ -99,7 +88,6 @@ def parse_args():
         help='Directory to save checkpoints'
     )
     
-    # Other settings
     parser.add_argument(
         '--seed',
         type=int,
@@ -122,17 +110,6 @@ def parse_args():
 
 
 def get_config(method: str, args):
-    """
-    Get configuration based on method and command line arguments.
-    
-    Args:
-        method: Distillation method name
-        args: Parsed command line arguments
-        
-    Returns:
-        Configuration object
-    """
-    # Select base config
     if method == 'cdm':
         config = CDMConfig()
     elif method == 'dskd':
@@ -146,7 +123,6 @@ def get_config(method: str, args):
     else:
         config = BaseConfig()
     
-    # Override with command line arguments
     if args.train_data is not None:
         config.train_data_path = args.train_data
     if args.eval_data is not None:
@@ -185,13 +161,10 @@ def get_config(method: str, args):
 
 
 def main():
-    """Main training function."""
     args = parse_args()
     
-    # Get configuration
     config = get_config(args.method, args)
     
-    # Print configuration
     print("\n" + "="*70)
     print(f"Configuration for {args.method.upper()} method:")
     print("="*70)
@@ -199,7 +172,6 @@ def main():
         print(f"  {k:25s} : {v}")
     print("="*70 + "\n")
     
-    # Create distiller
     try:
         distiller = KnowledgeDistiller(config)
     except Exception as e:
@@ -208,7 +180,6 @@ def main():
         traceback.print_exc()
         sys.exit(1)
     
-    # Start training
     try:
         distiller.train()
     except KeyboardInterrupt:

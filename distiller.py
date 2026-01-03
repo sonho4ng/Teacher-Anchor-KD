@@ -8,7 +8,8 @@ import torch.optim as optim
 import torch.nn.functional as F
 import numpy as np
 from pathlib import Path
-from torch.cuda.amp import autocast, GradScaler
+from torch.cuda.amp import autocast
+from torch.amp import GradScaler
 from torch.utils.data import DataLoader
 from transformers import AutoTokenizer, AutoModel, get_scheduler
 from collections import deque
@@ -33,10 +34,12 @@ from src.criterions.stella_distillation import StellaModel
 from src.criterions.stella_distillation import stella_stage1_loss, stella_stage2_loss
 from src.criterions.teacher_anchor_kd import TeacherAnchorKD
                 
-from src.evaluation.evaluation_automodel import (
+from src.evaluation import (
     eval_classification_task,
     eval_pair_task,
-    eval_sts_task,
+    eval_sts_task
+)
+from src.evaluation.evaluation_automodel import (
     test_cls_tasks,
     test_pair_tasks,
     test_sts_tasks
@@ -206,8 +209,7 @@ class KnowledgeDistiller:
             # Check if cache exists
             if cache_path.exists():
                 print(f"Loading cached teacher embeddings from: {cache_path}")
-                cached_data = load_cached_embeddings(str(cache_path))
-                teacher_cls_list = cached_data['teacher_cls']
+                teacher_cls_list = load_cached_embeddings(str(cache_path))
                 print(f"Loaded {len(teacher_cls_list)} cached embeddings")
             else:
                 print(f"Cache not found. Pre-computing teacher embeddings...")
@@ -250,8 +252,7 @@ class KnowledgeDistiller:
                 torch.cuda.empty_cache()
             print("Teacher model freed from GPU memory")
             
-            # Create dataset with cached embeddings
-            self.train_ds = TextPairWithTeacher(df, teacher_cls_list, cfg.task_type)
+            self.train_ds = TextPairWithTeacher(df, cfg.task_type, teacher_cls_list)
             
             self.collate_fn = DualTokenizerCollateWithTeacher(
                 self.tok_student,
@@ -302,19 +303,18 @@ class KnowledgeDistiller:
                 lr=cfg.learning_rate
             )
         
-        self.scaler = GradScaler(enabled=torch.cuda.is_available())
+        self.scaler = GradScaler('cuda', enabled=torch.cuda.is_available())
         
         num_steps = len(self.train_loader)
         total_steps = num_steps * cfg.epochs
         
-        min_lr_rate = getattr(cfg, 'min_lr', 2e-6) / cfg.learning_rate if cfg.distill_method == 'talas' else cfg.min_lr
-        
+        min_lr_rate = cfg.min_lr / cfg.learning_rate
         self.scheduler = get_scheduler(
             name='cosine_with_min_lr',
             optimizer=self.optimizer,
             num_warmup_steps=int(total_steps * cfg.warmup_ratio),
             num_training_steps=total_steps,
-            scheduler_specific_kwargs={'min_lr': min_lr_rate if cfg.distill_method == 'talas' else cfg.min_lr}
+            scheduler_specific_kwargs={'min_lr_rate': min_lr_rate}
         )
         
         if cfg.save_dir:
@@ -332,10 +332,17 @@ class KnowledgeDistiller:
         method = cfg.distill_method
         
         if method == 'talas':
+            batch_s = {}
+            for k, v in batch.items():
+                if not torch.is_tensor(v):
+                    continue
+                if k.endswith("_stu") or k == "labels" or k == "teacher_cls":
+                    batch_s[k] = v.to(self.device_s, non_blocking=True)
+            
             # Initialize TALAS criterion if needed
             if self.criterion is None:
                 d_s = self.model_student.config.hidden_size
-                d_t = self.model_teacher.config.hidden_size if self.model_teacher is not None else 896
+                d_t = batch_s["teacher_cls"].shape[-1]
                 self.criterion = TeacherAnchorKD(
                     student_dim=d_s,
                     teacher_dim=d_t,
@@ -347,19 +354,19 @@ class KnowledgeDistiller:
                     eps_norm=cfg.eps_norm
                 ).to(self.device_s)
                 
-                # Add criterion parameters to optimizer
-                self.optimizer.add_param_group({
-                    "params": self.criterion.parameters(),
-                    "lr": cfg.learning_rate * 5
-                })
+                # Re-initialize SAM optimizer with criterion parameters
+                base_optimizer = optim.AdamW
+                self.optimizer = SAM(
+                    [
+                        {"params": self.model_student.parameters(), "lr": cfg.learning_rate, "weight_decay": 0.01},
+                        {"params": self.criterion.parameters(), "lr": cfg.learning_rate * 5},
+                    ],
+                    base_optimizer,
+                    rho=getattr(cfg, 'rho', 0.05),
+                    adaptive=True
+                )
                 print(f"Initialized TeacherAnchorKD: {d_s} -> {d_t}, last_layer_idx={cfg.last_layer_idx}, start_rkd={cfg.start_rkd}")
-            
-            batch_s = {}
-            for k, v in batch.items():
-                if not torch.is_tensor(v):
-                    continue
-                if k.endswith("_stu") or k == "labels" or k == "teacher_cls":
-                    batch_s[k] = v.to(self.device_s, non_blocking=True)
+                print("Re-initialized SAM optimizer with criterion parameters")
             
             self.optimizer.zero_grad(set_to_none=True)
             
@@ -854,14 +861,14 @@ class KnowledgeDistiller:
                 print("="*60)
                 
                 try:
-                    from src.evaluation.evaluation_model_define import (
-                        eval_classification_task,
-                        eval_pair_task,
-                        eval_sts_task,
-                        test_cls_tasks,
-                        test_pair_tasks,
-                        test_sts_tasks
-                    )
+                    # from src.evaluation.evaluation_model_define import (
+                    #     eval_classification_task,
+                    #     eval_pair_task,
+                    #     eval_sts_task,
+                    #     test_cls_tasks,
+                    #     test_pair_tasks,
+                    #     test_sts_tasks
+                    # )
                     eval_classification_task(self.model_student, test_cls_tasks)
                     eval_pair_task(self.model_student, test_pair_tasks)
                     eval_sts_task(self.model_student, test_sts_tasks)
