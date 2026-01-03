@@ -223,6 +223,37 @@ Place training CSV file in `data/` directory:
 # Example: data/AllNLI.csv, data/merged_3_data_5k_each.csv
 ```
 
+**Important:** Training scripts use `test_debug.csv` by default for quick testing. Change to your actual training data:
+
+**Edit training scripts before running:**
+
+For PowerShell (`.ps1` files):
+```powershell
+# In scripts/train_talas.ps1, change line:
+$TRAIN_DATA = "data/test_debug.csv"
+# To your actual data file:
+$TRAIN_DATA = "data/merged_3_data_5k_each.csv"
+```
+
+For Bash (`.sh` files):
+```bash
+# In scripts/train_talas.sh, change line:
+TRAIN_DATA="../data/test_debug.csv"
+# To your actual data file:
+TRAIN_DATA="../data/merged_3_data_5k_each.csv"
+```
+
+**Customizing Training Parameters:**
+
+You can modify these parameters in training scripts:
+
+```bash
+BATCH_SIZE=32          # Batch size (reduce if OOM)
+EPOCHS=5              
+LR=2e-5             
+MAX_LENGTH=256       
+```
+
 #### 2. Run Training
 
 **Windows PowerShell:**
