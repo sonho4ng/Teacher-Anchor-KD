@@ -131,11 +131,11 @@ def eval_cls(model, eval_loader):
 
                 out1 = model(input_ids=input_ids1, attention_mask=attn1)
                 
-                # Support both StellaModel (dict) and AutoModel (object)
-                if isinstance(out1, dict):
+                # Support both StellaModel (dict with 'pooled') and AutoModel (object/dict with last_hidden_state)
+                if isinstance(out1, dict) and 'pooled' in out1:
                     emb1 = out1['pooled']
                 else:
-                    emb1 = out1.last_hidden_state[:, 0, :]
+                    emb1 = out1.last_hidden_state[:, 0, :] if hasattr(out1, 'last_hidden_state') else out1['last_hidden_state'][:, 0, :]
         
                 preds.extend(emb1.cpu().numpy())
                 labels.extend(label.numpy())
@@ -254,13 +254,13 @@ def eval_pair(model, eval_loader):
                 out1 = model(input_ids=input_ids1, attention_mask=attn1)
                 out2 = model(input_ids=input_ids2, attention_mask=attn2)
 
-                # Support both StellaModel (dict) and AutoModel (object)
-                if isinstance(out1, dict):
+                # Support both StellaModel (dict with 'pooled') and AutoModel (object/dict with last_hidden_state)
+                if isinstance(out1, dict) and 'pooled' in out1:
                     emb1 = out1['pooled']
                     emb2 = out2['pooled']
                 else:
-                    emb1 = out1.last_hidden_state[:, 0, :]
-                    emb2 = out2.last_hidden_state[:, 0, :]
+                    emb1 = out1.last_hidden_state[:, 0, :] if hasattr(out1, 'last_hidden_state') else out1['last_hidden_state'][:, 0, :]
+                    emb2 = out2.last_hidden_state[:, 0, :] if hasattr(out2, 'last_hidden_state') else out2['last_hidden_state'][:, 0, :]
         
                 # cosine similarity
                 sim = F.cosine_similarity(emb1, emb2)
