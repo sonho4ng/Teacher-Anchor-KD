@@ -9,6 +9,7 @@ class TeacherAnchorKD(nn.Module):
         self,
         student_dim: int,
         teacher_dim: int,
+        num_layers: int = 13,  # BERT-base has 13 layers (embedding + 12 transformer layers)
         last_layer_idx: Optional[int] = None,
         start_rkd: int = 0,
         w_task: float = 0.1,
@@ -20,10 +21,10 @@ class TeacherAnchorKD(nn.Module):
         self.student_dim = student_dim
         self.teacher_dim = teacher_dim
         
-        # Will be set based on actual hidden_states length
-        self.n_base = None
+        # Initialize projection heads immediately in __init__
+        self.n_base = num_layers
         self.last_layer_idx_config = last_layer_idx if last_layer_idx is not None else 2
-        self.last_layers_idx = None  # Will be computed in forward
+        self.last_layers_idx = list(range(max(0, self.n_base - self.last_layer_idx_config), self.n_base))
         
         self.start_rkd = start_rkd
         self.w_task = w_task
@@ -31,8 +32,15 @@ class TeacherAnchorKD(nn.Module):
         self.w_struct = w_struct
         self.eps_norm = eps_norm
         
-        # Projection heads will be initialized dynamically
-        self.kd_proj_heads = None
+        # Initialize projection heads in __init__ (like DSKD)
+        self.kd_proj_heads = nn.ModuleList([
+            nn.Linear(self.student_dim, self.teacher_dim, bias=False)
+            for _ in range(self.n_base)
+        ])
+        
+        # Init weights with small values (from notebook)
+        for head in self.kd_proj_heads:
+            nn.init.normal_(head.weight, mean=0.0, std=1e-3)
     
     def compute_self_kd_loss(
         self,
@@ -87,19 +95,9 @@ class TeacherAnchorKD(nn.Module):
         hidden_states = student_outputs['hidden_states']  # All layers
         cls_base = [h[:, 0, :] for h in hidden_states]  # Extract [CLS] from all layers
         
-        # Initialize projection heads on first forward pass
-        if self.kd_proj_heads is None:
-            self.n_base = len(cls_base)
-            self.last_layers_idx = list(range(max(0, self.n_base - self.last_layer_idx_config), self.n_base))
-            
-            self.kd_proj_heads = nn.ModuleList([
-                nn.Linear(self.student_dim, self.teacher_dim, bias=False)
-                for _ in range(self.n_base)
-            ])
-            for head in self.kd_proj_heads:
-                with torch.no_grad():
-                    head.weight.normal_(mean=0.0, std=1e-3)
-            self.kd_proj_heads.to(teacher_cls.device)
+        # Verify number of layers matches
+        if len(cls_base) != self.n_base:
+            raise ValueError(f"Expected {self.n_base} layers but got {len(cls_base)}")
         
         loss_struct = self.compute_self_kd_loss(cls_base)
         

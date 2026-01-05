@@ -358,13 +358,18 @@ class KnowledgeDistiller:
                 
                 loss_task, _ = info_nce(S_cls1, S_cls2, temperature=cfg.temperature)
                 
-                # Initialize TALAS criterion if needed (after s_out1 is available)
+                # Initialize TALAS criterion if needed
                 if self.criterion is None:
                     d_s = self.model_student.config.hidden_size
                     d_t = teacher_cls.shape[-1]
+                    
+                    # BERT-base has 13 layers: embedding + 12 transformer layers
+                    num_layers = len(s_out1.hidden_states)
+                    
                     self.criterion = TeacherAnchorKD(
                         student_dim=d_s,
                         teacher_dim=d_t,
+                        num_layers=num_layers,
                         last_layer_idx=cfg.last_layer_idx,
                         start_rkd=cfg.start_rkd,
                         w_task=cfg.w_task,
@@ -372,14 +377,6 @@ class KnowledgeDistiller:
                         w_struct=cfg.w_struct,
                         eps_norm=cfg.eps_norm
                     ).to(self.device_s)
-                    
-                    # Initialize projection heads by doing a dummy forward pass
-                    with torch.no_grad():
-                        dummy_outputs = {
-                            'hidden_states': s_out1.hidden_states,
-                            'last_hidden_state': S_last1
-                        }
-                        self.criterion(dummy_outputs, teacher_cls, loss_task)
                     
                     # Initialize SAM optimizer with both student and criterion parameters
                     if not SAM_AVAILABLE:
@@ -408,7 +405,7 @@ class KnowledgeDistiller:
                         scheduler_specific_kwargs={'min_lr_rate': min_lr_rate}
                     )
                     
-                    print(f"Initialized TeacherAnchorKD: {d_s} -> {d_t}, last_layer_idx={cfg.last_layer_idx}, start_rkd={cfg.start_rkd}")
+                    print(f"Initialized TeacherAnchorKD: {d_s} -> {d_t}, num_layers={num_layers}, last_layer_idx={cfg.last_layer_idx}, start_rkd={cfg.start_rkd}")
                     print(f"Initialized SAM optimizer with rho={getattr(cfg, 'rho', 0.05)}")
                     print(f"Initialized scheduler: {total_steps} steps, warmup={int(total_steps * cfg.warmup_ratio)}")
                 
@@ -426,12 +423,9 @@ class KnowledgeDistiller:
                 
                 loss = loss.float()
             
-            # Initialize optimizer zero_grad after criterion initialization
-            if self.optimizer is not None:
-                self.optimizer.zero_grad(set_to_none=True)
-            
-            # Backward pass 1
+            # Backward pass 1 (this will init gradients for first_step)
             self.scaler.scale(loss).backward()
+
             
             # Check gradients
             self.scaler.unscale_(self.optimizer)
