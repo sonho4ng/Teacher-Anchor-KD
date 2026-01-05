@@ -1,3 +1,4 @@
+import os
 import torch
 import numpy as np
 import pandas as pd
@@ -8,12 +9,15 @@ from scipy.stats import pearsonr, spearmanr
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, average_precision_score
 from sklearn.linear_model import LogisticRegression
 from transformers import AutoTokenizer
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 tokenizer = AutoTokenizer.from_pretrained('google-bert/bert-base-uncased')
 
 class STSDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)
@@ -134,7 +138,8 @@ def eval_cls(model, eval_loader):
 
 class ClasssifyDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)
@@ -210,7 +215,8 @@ def eval_classification_task(model, path_list):
 
 class PairDataset(Dataset):
     def __init__(self, file_path):
-        self.dataset = pd.read_csv(file_path)
+        full_path = BASE_DIR / file_path if not os.path.isabs(file_path) else file_path
+        self.dataset = pd.read_csv(full_path)
 
     def __len__(self):
         return len(self.dataset)

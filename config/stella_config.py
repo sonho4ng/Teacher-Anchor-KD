@@ -18,14 +18,14 @@ class StellaConfig(BaseConfig):
     epochs_stage1 = 2
     epochs_stage2 = 3
     
-    w_cos_stage1 = 10.0
-    w_sim_stage1 = 50.0
-    w_tri_stage1 = 10.0
+    w_cos_stage1 = 0.5
+    w_sim_stage1 = 2.0
+    w_tri_stage1 = 0.5
     
-    w_task = 0.4
-    w_cos_stage2 = 10.0
-    w_sim_stage2 = 50.0
-    w_tri_stage2 = 10.0
+    w_task = 0.5
+    w_cos_stage2 = 0.5
+    w_sim_stage2 = 2.0
+    w_tri_stage2 = 0.5
     
     temperature = 0.1
     

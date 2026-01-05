@@ -883,14 +883,14 @@ class KnowledgeDistiller:
                 print("="*60)
                 
                 try:
-                    # from src.evaluation.evaluation_model_define import (
-                    #     eval_classification_task,
-                    #     eval_pair_task,
-                    #     eval_sts_task,
-                    #     test_cls_tasks,
-                    #     test_pair_tasks,
-                    #     test_sts_tasks
-                    # )
+                    from src.evaluation.evaluation_model_define import (
+                        eval_classification_task,
+                        eval_pair_task,
+                        eval_sts_task,
+                        test_cls_tasks,
+                        test_pair_tasks,
+                        test_sts_tasks
+                    )
                     eval_classification_task(self.model_student, test_cls_tasks)
                     eval_pair_task(self.model_student, test_pair_tasks)
                     eval_sts_task(self.model_student, test_sts_tasks)
