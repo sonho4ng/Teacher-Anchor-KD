@@ -96,8 +96,9 @@ class TeacherAnchorKD(nn.Module):
                 nn.Linear(self.student_dim, self.teacher_dim, bias=False)
                 for _ in range(self.n_base)
             ])
-            for proj in self.kd_proj_heads:
-                nn.init.xavier_uniform_(proj.weight)
+            for head in self.kd_proj_heads:
+                with torch.no_grad():
+                    head.weight.normal_(mean=0.0, std=1e-3)
             self.kd_proj_heads.to(teacher_cls.device)
         
         loss_struct = self.compute_self_kd_loss(cls_base)

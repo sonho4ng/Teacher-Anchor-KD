@@ -34,12 +34,11 @@ from src.criterions.stella_distillation import StellaModel
 from src.criterions.stella_distillation import stella_stage1_loss, stella_stage2_loss
 from src.criterions.teacher_anchor_kd import TeacherAnchorKD
                 
-from src.evaluation import (
+# Use evaluation_automodel for AutoModel (not evaluation_model_define which is for Stella)
+from src.evaluation.evaluation_automodel import (
     eval_classification_task,
     eval_pair_task,
-    eval_sts_task
-)
-from src.evaluation.evaluation_automodel import (
+    eval_sts_task,
     test_cls_tasks,
     test_pair_tasks,
     test_sts_tasks
@@ -287,35 +286,31 @@ class KnowledgeDistiller:
     def setup_training(self):
         cfg = self.config
         
-        # TALAS uses SAM optimizer
-        if cfg.distill_method == 'talas' and SAM_AVAILABLE:
-            base_optimizer = optim.AdamW
-            self.optimizer = SAM(
-                [{'params': self.model_student.parameters(), 'lr': cfg.learning_rate, 'weight_decay': 0.01}],
-                base_optimizer,
-                rho=getattr(cfg, 'rho', 0.05),
-                adaptive=True
-            )
-            print(f"Using SAM optimizer with rho={getattr(cfg, 'rho', 0.05)}")
+        # TALAS optimizer/scheduler will be initialized after criterion creation in train_step
+        if cfg.distill_method == 'talas':
+            self.optimizer = None
+            self.scheduler = None
+            self.scaler = GradScaler('cuda', enabled=torch.cuda.is_available())
+            print("TALAS: Deferring optimizer/scheduler initialization until criterion is created")
         else:
             self.optimizer = optim.AdamW(
                 self.model_student.parameters(),
                 lr=cfg.learning_rate
             )
-        
-        self.scaler = GradScaler('cuda', enabled=torch.cuda.is_available())
-        
-        num_steps = len(self.train_loader)
-        total_steps = num_steps * cfg.epochs
-        
-        min_lr_rate = cfg.min_lr / cfg.learning_rate
-        self.scheduler = get_scheduler(
-            name='cosine_with_min_lr',
-            optimizer=self.optimizer,
-            num_warmup_steps=int(total_steps * cfg.warmup_ratio),
-            num_training_steps=total_steps,
-            scheduler_specific_kwargs={'min_lr_rate': min_lr_rate}
-        )
+            
+            self.scaler = GradScaler('cuda', enabled=torch.cuda.is_available())
+            
+            num_steps = len(self.train_loader)
+            total_steps = num_steps * cfg.epochs
+            
+            min_lr_rate = cfg.min_lr / cfg.learning_rate
+            self.scheduler = get_scheduler(
+                name='cosine_with_min_lr',
+                optimizer=self.optimizer,
+                num_warmup_steps=int(total_steps * cfg.warmup_ratio),
+                num_training_steps=total_steps,
+                scheduler_specific_kwargs={'min_lr_rate': min_lr_rate}
+            )
         
         if cfg.save_dir:
             os.makedirs(cfg.save_dir, exist_ok=True)
@@ -338,37 +333,6 @@ class KnowledgeDistiller:
                     continue
                 if k.endswith("_stu") or k == "labels" or k == "teacher_cls":
                     batch_s[k] = v.to(self.device_s, non_blocking=True)
-            
-            # Initialize TALAS criterion if needed
-            if self.criterion is None:
-                d_s = self.model_student.config.hidden_size
-                d_t = batch_s["teacher_cls"].shape[-1]
-                self.criterion = TeacherAnchorKD(
-                    student_dim=d_s,
-                    teacher_dim=d_t,
-                    last_layer_idx=cfg.last_layer_idx,
-                    start_rkd=cfg.start_rkd,
-                    w_task=cfg.w_task,
-                    w_kd=cfg.w_kd,
-                    w_struct=cfg.w_struct,
-                    eps_norm=cfg.eps_norm
-                ).to(self.device_s)
-                
-                # Re-initialize SAM optimizer with criterion parameters
-                base_optimizer = optim.AdamW
-                self.optimizer = SAM(
-                    [
-                        {"params": self.model_student.parameters(), "lr": cfg.learning_rate, "weight_decay": 0.01},
-                        {"params": self.criterion.parameters(), "lr": cfg.learning_rate * 5},
-                    ],
-                    base_optimizer,
-                    rho=getattr(cfg, 'rho', 0.05),
-                    adaptive=True
-                )
-                print(f"Initialized TeacherAnchorKD: {d_s} -> {d_t}, last_layer_idx={cfg.last_layer_idx}, start_rkd={cfg.start_rkd}")
-                print("Re-initialized SAM optimizer with criterion parameters")
-            
-            self.optimizer.zero_grad(set_to_none=True)
             
             # ========== FIRST PASS ==========
             with autocast(enabled=torch.cuda.is_available()):
@@ -394,6 +358,61 @@ class KnowledgeDistiller:
                 
                 loss_task, _ = info_nce(S_cls1, S_cls2, temperature=cfg.temperature)
                 
+                # Initialize TALAS criterion if needed (after s_out1 is available)
+                if self.criterion is None:
+                    d_s = self.model_student.config.hidden_size
+                    d_t = teacher_cls.shape[-1]
+                    self.criterion = TeacherAnchorKD(
+                        student_dim=d_s,
+                        teacher_dim=d_t,
+                        last_layer_idx=cfg.last_layer_idx,
+                        start_rkd=cfg.start_rkd,
+                        w_task=cfg.w_task,
+                        w_kd=cfg.w_kd,
+                        w_struct=cfg.w_struct,
+                        eps_norm=cfg.eps_norm
+                    ).to(self.device_s)
+                    
+                    # Initialize projection heads by doing a dummy forward pass
+                    with torch.no_grad():
+                        dummy_outputs = {
+                            'hidden_states': s_out1.hidden_states,
+                            'last_hidden_state': S_last1
+                        }
+                        self.criterion(dummy_outputs, teacher_cls, loss_task)
+                    
+                    # Initialize SAM optimizer with both student and criterion parameters
+                    if not SAM_AVAILABLE:
+                        raise RuntimeError("SAM optimizer not available. Install pytorch_optimizer.")
+                    
+                    base_optimizer = optim.AdamW
+                    self.optimizer = SAM(
+                        [
+                            {"params": self.model_student.parameters(), "lr": cfg.learning_rate, "weight_decay": 0.01},
+                            {"params": self.criterion.parameters(), "lr": cfg.learning_rate * 5},
+                        ],
+                        base_optimizer,
+                        rho=getattr(cfg, 'rho', 0.05),
+                        adaptive=True
+                    )
+                    
+                    # Initialize scheduler
+                    num_steps = len(self.train_loader)
+                    total_steps = num_steps * cfg.epochs
+                    min_lr_rate = cfg.min_lr / cfg.learning_rate
+                    self.scheduler = get_scheduler(
+                        name='cosine_with_min_lr',
+                        optimizer=self.optimizer,
+                        num_warmup_steps=int(total_steps * cfg.warmup_ratio),
+                        num_training_steps=total_steps,
+                        scheduler_specific_kwargs={'min_lr_rate': min_lr_rate}
+                    )
+                    
+                    print(f"Initialized TeacherAnchorKD: {d_s} -> {d_t}, last_layer_idx={cfg.last_layer_idx}, start_rkd={cfg.start_rkd}")
+                    print(f"Initialized SAM optimizer with rho={getattr(cfg, 'rho', 0.05)}")
+                    print(f"Initialized scheduler: {total_steps} steps, warmup={int(total_steps * cfg.warmup_ratio)}")
+                
+                # Now safe to call criterion with initialized projection heads
                 student_outputs = {
                     'hidden_states': s_out1.hidden_states,
                     'last_hidden_state': S_last1
@@ -406,6 +425,10 @@ class KnowledgeDistiller:
                 )
                 
                 loss = loss.float()
+            
+            # Initialize optimizer zero_grad after criterion initialization
+            if self.optimizer is not None:
+                self.optimizer.zero_grad(set_to_none=True)
             
             # Backward pass 1
             self.scaler.scale(loss).backward()
@@ -459,7 +482,11 @@ class KnowledgeDistiller:
             if not is_finite(loss_2):
                 raise RuntimeError(f"loss_2 NaN/Inf")
             
-            # Backward pass 2
+            # Check loss_2 finite before backward
+            if not is_finite(loss_2):
+                raise RuntimeError(f"loss_2 NaN/Inf at epoch={self.current_epoch} step={self.current_step}")
+            
+            # Backward pass 2 - IMPORTANT: Do NOT scale (plain backward)
             loss_2.backward()
             
             # Check gradients again
@@ -744,7 +771,8 @@ class KnowledgeDistiller:
                 
                 for k, v in metrics.items():
                     if k != 'loss_total':
-                        postfix[k] = f"{v:.4f}"
+                        # Format only if v is numeric (not string like 'skip': 'grad_inf_p1')
+                        postfix[k] = f"{v:.4f}" if isinstance(v, (int, float)) else str(v)
                 
                 pbar.set_postfix(postfix)
             else:

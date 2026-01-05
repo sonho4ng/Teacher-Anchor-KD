@@ -14,9 +14,9 @@ class TALASConfig(BaseConfig):
     
     last_layer_idx = 2
     start_rkd = 0
-    w_task = 0.01
+    w_task = 0.001
     w_kd = 0.75
-    w_struct = 10.0
+    w_struct = 1.0  
     eps_norm = 1e-12
     temperature = 0.1
     rho = 0.05
@@ -29,7 +29,7 @@ class TALASConfig(BaseConfig):
     cache_teacher = True
     cache_path = "cache/teacher_train.pt"
     pooling_method = "last_token"
-    normalize_cache = False
+    normalize_cache = True  
     cache_dtype = "float32"
     
     save_dir = "checkpoints/talas"
