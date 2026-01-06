@@ -12,7 +12,7 @@ class BaseConfig:
     w_task = 0.5
     alpha_dtw = 0.5
     w_cls = 1.0
-    temperature = 0.07
+    temperature = 0.1
     
     student_model_name = "bert-base-uncased"
     teacher_model_name = "sentence-transformers/all-MiniLM-L6-v2"
@@ -33,7 +33,7 @@ class BaseConfig:
     
     debug_align = False
     
-    seed = 42
+    seed = 10
     
     def __repr__(self):
         attrs = [f"{k}={v}" for k, v in self.__dict__.items() 
