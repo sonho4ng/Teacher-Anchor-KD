@@ -302,3 +302,6 @@ eval_classification_task(model, test_cls_tasks)
 eval_pair_task(model, test_pair_tasks)
 ```
 
+### TALAS training
+
+If you change data, delete cache first to re-calculate cache teacher
