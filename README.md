@@ -245,16 +245,6 @@ TRAIN_DATA="../data/test_debug.csv"
 TRAIN_DATA="../data/merged_3_data_5k_each.csv"
 ```
 
-**Customizing Training Parameters:**
-
-You can modify these parameters in training scripts:
-
-```bash
-BATCH_SIZE=32          # Batch size (reduce if OOM)
-EPOCHS=5              
-LR=2e-5             
-MAX_LENGTH=256       
-```
 
 #### 2. Run Training
 
@@ -287,6 +277,21 @@ cd scripts
 ./train_stella.sh
 ```
 
+### TALAS training
+
+If you change data, delete cache first to re-calculate cache teacher.
+
+### Baseline training
+
+When using Qwen3 as the teacher model, apply last-token pooling to obtain the sentence representation. For BGE-M3 as the teacher, use the CLS token for pooling.
+
+### Precision
+
+The training precision can be switched between float16 and float32 as required.
+
+### Hyperparameter Tuning
+
+You can access the corresponding config file (e.g., `config/talas_config.py`, `config/stella_config.py`) to adjust hyperparameters such as learning rate, batch size, epochs, loss weights, and other training configurations.
 
 
 ## Evaluation
@@ -302,6 +307,3 @@ eval_classification_task(model, test_cls_tasks)
 eval_pair_task(model, test_pair_tasks)
 ```
 
-### TALAS training
-
-If you change data, delete cache first to re-calculate cache teacher

@@ -20,7 +20,7 @@ class CDMConfig(BaseConfig):
     epochs = 5
     learning_rate = 2e-5
     
-    debug_align = True
+    debug_align = False
     
     save_dir = "checkpoints/cdm"
     
