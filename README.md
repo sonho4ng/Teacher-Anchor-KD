@@ -41,6 +41,8 @@ mkdir -p scripts/cache
 
 **1. Training Data Setup:**
 
+Get model_hub from `https://github.com/microsoft/unilm/tree/master/minilm`
+
 Place your training CSV file in `data/` directory:
 - File format: CSV with columns `text` or `premise`, `hypothesis`
 - Example files: `merged_3_data_5k_each.csv`
