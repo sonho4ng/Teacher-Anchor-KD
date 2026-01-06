@@ -63,7 +63,7 @@ def eval_sts(model, eval_loader):
     preds, labels = [], []
     device = model.device
     
-    with torch.cuda.amp.autocast(dtype=torch.float16):
+    with torch.amp.autocast('cuda', dtype=torch.float16):
         with torch.no_grad():
             for batch in tqdm(eval_loader):
                 input_ids1 = batch["input_ids1"].to(device)
@@ -77,12 +77,12 @@ def eval_sts(model, eval_loader):
                 out2 = model(input_ids=input_ids2, attention_mask=attn2)
 
                 # Support both StellaModel (dict) and AutoModel (object)
-                if isinstance(out1, dict):
+                if isinstance(out1, dict) and 'pooled' in out1:
                     emb1 = out1['pooled']
                     emb2 = out2['pooled']
                 else:
-                    emb1 = out1.last_hidden_state[:, 0, :]
-                    emb2 = out2.last_hidden_state[:, 0, :]
+                    emb1 = out1.last_hidden_state[:, 0, :] if hasattr(out1, 'last_hidden_state') else out1['last_hidden_state'][:, 0, :]
+                    emb2 = out2.last_hidden_state[:, 0, :] if hasattr(out2, 'last_hidden_state') else out2['last_hidden_state'][:, 0, :]
         
                 # cosine similarity
                 sim = F.cosine_similarity(emb1, emb2)
@@ -122,7 +122,7 @@ def eval_cls(model, eval_loader):
     preds, labels = [], []
     device = model.device
     
-    with torch.cuda.amp.autocast(dtype=torch.float16):
+    with torch.amp.autocast('cuda', dtype=torch.float16):
         with torch.no_grad():
             for batch in tqdm(eval_loader):
                 input_ids1 = batch["input_ids1"].to(device)
@@ -241,7 +241,7 @@ def eval_pair(model, eval_loader):
     preds, labels = [], []
     device = model.device
     
-    with torch.cuda.amp.autocast(dtype=torch.float16):
+    with torch.amp.autocast('cuda', dtype=torch.float16):
         with torch.no_grad():
             for batch in tqdm(eval_loader):
                 input_ids1 = batch["input_ids1"].to(device)
