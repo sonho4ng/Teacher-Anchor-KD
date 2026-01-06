@@ -6,7 +6,7 @@ $env:CUDA_VISIBLE_DEVICES = "0,1"
 $env:TOKENIZERS_PARALLELISM = "false"
 
 $METHOD = "cdm"
-$TRAIN_DATA = "..\data\test_debug.csv"
+$TRAIN_DATA = "..\data\merged_3_data_5k_each.csv"
 $STUDENT_MODEL = "..\model_hub\MiniLMv2-L6-H384-distilled-from-BERT-Base\MiniLM-L6-H384-distilled-from-BERT-Base"
 $TEACHER_MODEL = "Qwen/Qwen3-Embedding-0.6B"
 $BATCH_SIZE = 32
@@ -27,8 +27,7 @@ python ../main.py `
     --save_dir $SAVE_DIR `
     --w_task 0.5 `
     --alpha_dtw 0.5 `
-    --num_workers 2 `
-    --debug
+    --num_workers 2
 
 Write-Host "======================================"
 Write-Host "Training completed!"
